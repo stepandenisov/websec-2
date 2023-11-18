@@ -1,0 +1,26 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+/schedule/node_modules
+/schedule/.pnp
+/schedule/.pnp.js
+/server/node_modules
+/server/.pnp
+/server/.pnp.js
+
+# testing
+/schedule/coverage
+
+# production
+/schedule/build
+
+# misc
+/schedule/.DS_Store
+/schedule/.env.local
+/schedule/.env.development.local
+/schedule/.env.test.local
+/schedule/.env.production.local
+
+/schedule/npm-debug.log*
+/schedule/yarn-debug.log*
+/schedule/yarn-error.log*
