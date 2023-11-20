@@ -217,7 +217,6 @@ async function getGroupId(number){
     const facultyIdRegex = /(\d)+/g
     const rawFacultiyNamesList = rawFaculties[0].match(rawFacultyNameRegex)
     const rawFacultiyIdList = rawFaculties[0].match(rawFacultyIdRegex)
-    console.log(rawFacultiyIdList.length, rawFacultiyNamesList.length)
     const faculties = []
     let groupId = -1
     const courseGroup = []
@@ -235,7 +234,6 @@ async function getGroupId(number){
         const rawCourseNumbers = rawCourse[0].match(rawCourseNumberRegex)
         const courseNumberRegex = /\d/g
         const maxCourseNumber = parseInt(rawCourseNumbers[0].match(courseNumberRegex))
-        console.log(maxCourseNumber)
         for (let course = 1; course <= maxCourseNumber; course++){
             const facultyGroupsData = await getRequestToSSAU(`https://ssau.ru/rasp/faculty/${faculties[facultyListIndex]["facultyId"]}?course=${course}`)
             const rawGroupsRegex = /href="\/rasp\?groupId=(\d)+"(.|\n)*class="footer"/g
@@ -253,7 +251,6 @@ async function getGroupId(number){
                 groupIds.push(element.substring(8).slice(0, -1))
             })
             groupNumbers.forEach((element, index, groupNumbers) => { courseGroup.push({groupNumber: element, groupId: groupIds[index]})});
-            console.log(courseGroup)
             regexNumber = new RegExp(number)
             courseGroup.forEach((element) => {
                 if (regexNumber.test(element["groupNumber"])){
@@ -265,13 +262,13 @@ async function getGroupId(number){
     return groupId
 }
 
+const transpose = matrix => matrix[0].map((col, i) => matrix.map(row => row[i]));
+
 async function getGroupSchedule(groupId, selectedWeek, selectedWeekday){
     const responseData = await getRequestToSSAU(
         `https://ssau.ru/rasp?groupId=${groupId}&selectedWeek=${selectedWeek}&selectedWeekday=${selectedWeekday}`)
     const rawScheduleRegex = /class="schedule__time-item">((.|\n)*)class="footer"/g
     const rawSchedule = await responseData.match(rawScheduleRegex)
-    console.log(responseData)
-    console.log(groupId)
     if (rawSchedule === null){
         isIntroduced = (/расписание пока не введено/i).test(responseData)
         if(isIntroduced){
@@ -284,33 +281,42 @@ async function getGroupSchedule(groupId, selectedWeek, selectedWeekday){
     const rawTimeScheduleRegex = /(\d\d:\d\d)((.|\n)(?!(\d\d:\d\d)))*/g
     const rawTimeSchedule = await rawSchedule[0].match(rawTimeScheduleRegex)
     rawSubjectsMatrix = []
-    console.log(rawTimeSchedule)
+    const rawAnotherSubjectMatrix = []
     timeMatrix = []
     for (rawScheduleListNumber = 1; rawScheduleListNumber < rawTimeSchedule.length; rawScheduleListNumber+=2){
         const subjectRegex = /<div(\n?)class="schedule__item((.|\n)(?!(<div(\n?)class="schedule__item)))*/g
+        const anotherSubjectRegex = /schedule__item(.|\n)*?<\/div><\/div><\/div><div/g
         const timeRegex = /\d\d:\d\d/g
         startTime = await rawTimeSchedule[rawScheduleListNumber-1].match(timeRegex)
         finishTime = await rawTimeSchedule[rawScheduleListNumber].match(timeRegex)
-        timeMatrix.push([startTime[0], finishTime[0]])
+        timeMatrix.push({startTime: startTime[0], finishTime: finishTime[0]})
         rawSubjectsMatrix.push(rawTimeSchedule[rawScheduleListNumber].match(subjectRegex))
+        rawAnotherSubjectMatrix.push(rawTimeSchedule[rawScheduleListNumber].match(anotherSubjectRegex))
     }   
     subjectsMatrix = []
     typeSubjectMatrix = []
     groupsMatrix = []
     placeMatrix = []
+    lectorMatrix = []
+    groupSchedule = []
+    //isSubjectIntroduceMatrix = []
     for (rawSubjectListNumber=0; rawSubjectListNumber<rawSubjectsMatrix.length; rawSubjectListNumber++){
         subjectsMatrix.push([])
         typeSubjectMatrix.push([])
         groupsMatrix.push([])
         placeMatrix.push([])
+        lectorMatrix.push([])
         for (rawSubjectIndex=0; rawSubjectIndex<rawSubjectsMatrix[rawSubjectListNumber].length; rawSubjectIndex++){
             const rawSubjectNameRegex = /lesson-color-type-\d(.)*</g
             const subjectRegex = / ((.)*)(?!<\/div>)/g
             rawSubject = await rawSubjectsMatrix[rawSubjectListNumber][rawSubjectIndex].match(rawSubjectNameRegex)
             if(rawSubject !== null) {
-                subject = await rawSubject[0].match(subjectRegex)
-                subject = subject[0].replace(/<\/div></g,"").substring(1)
-                subjectsMatrix[rawSubjectListNumber].push(subject)
+                subjectsMatrix[rawSubjectListNumber].push([])
+                for (subjectIndex = 0; subjectIndex < rawSubject.length; subjectIndex++){
+                    subject = await rawSubject[subjectIndex].match(subjectRegex)
+                    subject = subject[0].replace(/<\/div></g,"").substring(1)
+                    subjectsMatrix[rawSubjectListNumber][rawSubjectIndex].push(subject)
+                }
             }
             else{
                 subjectsMatrix[rawSubjectListNumber].push(null)
@@ -320,48 +326,107 @@ async function getGroupSchedule(groupId, selectedWeek, selectedWeekday){
             const typeNumberRegex = /\d/g
             rawType = await rawSubjectsMatrix[rawSubjectListNumber][rawSubjectIndex].match(rawTypeRegex)
             if(rawType !== null) {
-                type = await rawType[0].match(typeNumberRegex)
-                typeSubjectMatrix[rawSubjectListNumber].push(lessonTypes[type])
+                typeSubjectMatrix[rawSubjectListNumber].push([])
+                for (typeIndex = 0; typeIndex < rawType.length; typeIndex++){
+                    type = await rawType[typeIndex].match(typeNumberRegex)
+                    typeSubjectMatrix[rawSubjectListNumber][rawSubjectIndex].push(lessonTypes[type])
+                }
             }
             else{
                 typeSubjectMatrix[rawSubjectListNumber].push(null)
             }
 
-            // const rawGroupRegex = /href=\"\/rasp\?groupId=(.)*>/g
-            // const rawGroupNumberRegex = /schedule__group\">(.)* /g
-            // const rawGroupIdRegex = /\/rasp\?groupId=(\d)*/g
-            // const groupIdRegex = /(\d)+/g
-            // const groupNumberRegex = /(\d{4})-(\d{6})(\D?)/g
-            // rawGroup = await rawSubjectsMatrix[rawSubjectListNumber][rawSubjectIndex].match(rawGroupRegex)
-            // console.log(rawGroup)
-            // if (rawGroup!== null){
-            //     groupsMatrix[rawSubjectListNumber].push([])
-            //     for (rawGroupIndex = 0; rawGroupIndex < rawGroup.length; rawGroupIndex++){
-            //         rawGroupNumber = await rawGroup[rawGroupIndex].match(rawGroupNumberRegex)
-            //         rawGroupId = await rawGroup[rawGroupIndex].match(rawGroupIdRegex)
-            //         console.log(rawGroupNumber, rawGroupId)
-            //         groupNumber = await rawGroupNumber[0].match(groupNumberRegex)
-            //         groupId = await rawGroupId[0].match(groupIdRegex)
-            //         groupsMatrix[rawSubjectListNumber][rawSubjectIndex].push([{"groupNumber":groupNumber[0]},{"groupId": groupId}])
-            //     }
-            // }
-            // else{
-            //     groupsMatrix[rawSubjectListNumber].push(null)
-            // }
+            const rawGroupRegex = /href=\"\/rasp\?groupId=(.)*>/g
+            const rawGroupNumberRegex = /schedule__group\">(.)* /g
+            const rawGroupIdRegex = /\/rasp\?groupId=(\d)*/g
+            const groupIdRegex = /(\d)+/g
+            const groupNumberRegex = /(\d{4})-(\d{6})(\D?)/g
+            rawGroup = await rawSubjectsMatrix[rawSubjectListNumber][rawSubjectIndex].match(rawGroupRegex)
+            if (rawGroup!== null){
+                groupsMatrix[rawSubjectListNumber].push([])
+                for (rawGroupIndex = 0; rawGroupIndex < rawGroup.length; rawGroupIndex++){
+                    rawGroupNumber = await rawGroup[rawGroupIndex].match(rawGroupNumberRegex)
+                    rawGroupId = await rawGroup[rawGroupIndex].match(rawGroupIdRegex)
+                    groupNumber = await rawGroupNumber[0].match(groupNumberRegex)
+                    groupId = await rawGroupId[0].match(groupIdRegex)
+                    groupsMatrix[rawSubjectListNumber][rawSubjectIndex].push([{"groupNumber":groupNumber[0]},{"groupId": groupId}])
+                }
+            }
+            else{
+                groupsMatrix[rawSubjectListNumber].push(null)
+            }
 
             const rawSubjectPlaceRegex = /schedule__place\">(.)*<\/div>/g
             const subjectPlaceRegex = />(.)*</g
             rawSubjectPlace = await rawSubjectsMatrix[rawSubjectListNumber][rawSubjectIndex].match(rawSubjectPlaceRegex)
             if (rawSubjectPlace!==null){
-                subjectPlace = await rawSubjectPlace[0].match(subjectPlaceRegex)
-                placeMatrix[rawSubjectListNumber].push(subjectPlace[0].substring(2).slice(0, -1))
+                placeMatrix[rawSubjectListNumber].push([])
+                for (rawPlaceIndex = 0; rawPlaceIndex < rawSubjectPlace.length; rawPlaceIndex++){
+                    subjectPlace = await rawSubjectPlace[rawPlaceIndex].match(subjectPlaceRegex)
+                    placeMatrix[rawSubjectListNumber][rawSubjectIndex].push(subjectPlace[0].substring(2).slice(0, -1))
+                }
             }
             else{
                 placeMatrix[rawSubjectListNumber].push(null)
             }
         }
+
+        for(rawSubjectIndex=0; rawSubjectIndex<rawAnotherSubjectMatrix[rawSubjectListNumber].length; rawSubjectIndex++){
+            const rawLectorNameRegex = /schedule__teacher(.|\n)*?<\/div>/g
+            rawLectorName = rawAnotherSubjectMatrix[rawSubjectListNumber][rawSubjectIndex].match(rawLectorNameRegex)
+            if (rawLectorName !== null){
+                let subGroup = []
+                const rawSubGroupRegex = /Подгруппы: \d/g
+                const rawSubGroup = await rawAnotherSubjectMatrix[rawSubjectListNumber][rawSubjectIndex].match(rawSubGroupRegex)
+                if(rawSubGroup !== null){
+                    const subGroupRegex = /\d/g
+                    for (indexSub = 0; indexSub < rawSubGroup.length; indexSub++){
+                        subGroup.push(rawSubGroup[indexSub].match(subGroupRegex)[0])
+                    }
+                }
+                lectorMatrix[rawSubjectListNumber].push([])
+                for (rawLectorIndex = 0; rawLectorIndex < rawLectorName.length; rawLectorIndex++){
+                    const lectorNameRegex = />([А-ЯЁ]|[а-яё]|(\.)|( )|(-)){4,}</g
+                    const lectorIdRegex = /(\d)+/g
+                    const lectorName = rawLectorName[rawLectorIndex].match(lectorNameRegex)[0].substring(1).slice(0,-1) 
+                    lectorId = rawLectorName[rawLectorIndex].match(lectorIdRegex)
+                    if(lectorId === null){
+                        lectorId = [-1]
+                    }
+                    if(subGroup.length === 0){
+                        lectorMatrix[rawSubjectListNumber][rawSubjectIndex].push({lectorName: lectorName, lectorId: lectorId[0]})
+                    }
+                    else{
+                        lectorMatrix[rawSubjectListNumber][rawSubjectIndex].push({lectorName: lectorName, lectorId: lectorId[0], subGroup: subGroup[rawLectorIndex]})
+                    }
+                }
+            }
+        }
     }
-    return typeSubjectMatrix
+    subjectsMatrix.forEach((subjectList, subjectListIndex) =>{
+        groupSchedule.push([])
+        console.log(subjectList)
+        subjectList.forEach((subject, subjectIndex) =>{
+            console.log(subject)
+            if(subject===null){
+                console.log(subjectIndex)
+                groupSchedule[subjectListIndex].push(null)
+            }
+            else{
+                var element = new Object()
+                    element.subject = JSON.stringify(subjectsMatrix[subjectListIndex][subjectIndex])
+                    element.time = JSON.stringify(timeMatrix[subjectListIndex])
+                    element.place = JSON.stringify(placeMatrix[subjectListIndex][subjectIndex])
+                    element.lector = JSON.stringify(lectorMatrix[subjectListIndex][0])
+                    lectorMatrix[subjectListIndex].shift()
+                    element.groups = JSON.stringify(groupsMatrix[subjectListIndex][subjectIndex])
+                    element.type = JSON.stringify(typeSubjectMatrix[subjectListIndex][subjectIndex])
+                groupSchedule[subjectListIndex].push(element)
+            }
+        })
+    })
+    t = transpose(groupSchedule)
+    return JSON.parse(JSON.stringify(t))
 }
 
 app.get("/group/:number", async function(req, res){
@@ -370,7 +435,7 @@ app.get("/group/:number", async function(req, res){
     if (groupId===-1) res.send("No Group")
     else{
         console.log(groupId)
-        const groupSchedule = await getGroupSchedule(groupId, 6, 1)
+        const groupSchedule = await getGroupSchedule(groupId, 12, 1)
         res.send(groupSchedule);
     }
 });
