@@ -114,8 +114,6 @@ async function getLecturerSchedule(staffId, selectedWeek, selectedWeekday){
         `https://ssau.ru/rasp?staffId=${staffId}&selectedWeek=${selectedWeek}&selectedWeekday=${selectedWeekday}`)
     const rawScheduleRegex = /class="schedule__time-item">((.|\n)*)class="footer"/g
     const rawSchedule = await responseData.match(rawScheduleRegex)
-    console.log(responseData)
-    console.log(staffId)
     if (rawSchedule === null){
         isIntroduced = (/расписание пока не введено/i).test(responseData)
         if(isIntroduced){
@@ -128,8 +126,8 @@ async function getLecturerSchedule(staffId, selectedWeek, selectedWeekday){
     const rawTimeScheduleRegex = /(\d\d:\d\d)((.|\n)(?!(\d\d:\d\d)))*/g
     const rawTimeSchedule = await rawSchedule[0].match(rawTimeScheduleRegex)
     rawSubjectsMatrix = []
-    console.log(rawTimeSchedule)
     timeMatrix = []
+    lectorSchedule = []
     for (rawScheduleListNumber = 1; rawScheduleListNumber < rawTimeSchedule.length; rawScheduleListNumber+=2){
         const subjectRegex = /<div(\n?)class="schedule__item((.|\n)(?!(<div(\n?)class="schedule__item)))*/g
         const timeRegex = /\d\d:\d\d/g
@@ -171,11 +169,11 @@ async function getLecturerSchedule(staffId, selectedWeek, selectedWeekday){
                 typeSubjectMatrix[rawSubjectListNumber].push(null)
             }
 
-            const rawGroupRegex = /href=\"\/rasp\?groupId=(.)*>/g
-            const rawGroupNumberRegex = /schedule__group\">(.)* /g
+            const rawGroupRegex = /href=\"\/rasp\?groupId=(.)*<\/a>/g
+            const rawGroupNumberRegex = /schedule__group\">(.)*</g
             const rawGroupIdRegex = /\/rasp\?groupId=(\d)*/g
             const groupIdRegex = /(\d)+/g
-            const groupNumberRegex = /(\d{4})-(\d{6})(\D?)/g
+            const groupNumberRegex = /(\d{4})-(\d{6})(\D)?( \(\d\))?/g
             rawGroup = await rawSubjectsMatrix[rawSubjectListNumber][rawSubjectIndex].match(rawGroupRegex)
             console.log(rawGroup)
             if (rawGroup!== null){
@@ -183,7 +181,7 @@ async function getLecturerSchedule(staffId, selectedWeek, selectedWeekday){
                 for (rawGroupIndex = 0; rawGroupIndex < rawGroup.length; rawGroupIndex++){
                     rawGroupNumber = await rawGroup[rawGroupIndex].match(rawGroupNumberRegex)
                     rawGroupId = await rawGroup[rawGroupIndex].match(rawGroupIdRegex)
-                    console.log(rawGroupNumber, rawGroupId)
+                    console.log(rawGroupNumber[0])
                     groupNumber = await rawGroupNumber[0].match(groupNumberRegex)
                     groupId = await rawGroupId[0].match(groupIdRegex)
                     groupsMatrix[rawSubjectListNumber][rawSubjectIndex].push([{"groupNumber":groupNumber[0]},{"groupId": groupId}])
@@ -205,7 +203,25 @@ async function getLecturerSchedule(staffId, selectedWeek, selectedWeekday){
             }
         }
     }
-    return groupsMatrix
+    subjectsMatrix.forEach((subjectList, subjectListIndex) =>{
+        lectorSchedule.push([])
+        subjectList.forEach((subject, subjectIndex) =>{
+            if(subject===null){
+                lectorSchedule[subjectListIndex].push(null)
+            }
+            else{
+                var element = new Object()
+                    element.subject = JSON.stringify(subjectsMatrix[subjectListIndex][subjectIndex])
+                    element.time = JSON.stringify(timeMatrix[subjectListIndex])
+                    element.place = JSON.stringify(placeMatrix[subjectListIndex][subjectIndex])
+                    element.groups = JSON.stringify(groupsMatrix[subjectListIndex][subjectIndex])
+                    element.type = JSON.stringify(typeSubjectMatrix[subjectListIndex][subjectIndex])
+                lectorSchedule[subjectListIndex].push(element)
+            }
+        })
+    })
+    t = transpose(lectorSchedule)
+    return JSON.parse(JSON.stringify(t))
 }
 
 async function getGroupId(number){
@@ -299,7 +315,6 @@ async function getGroupSchedule(groupId, selectedWeek, selectedWeekday){
     placeMatrix = []
     lectorMatrix = []
     groupSchedule = []
-    //isSubjectIntroduceMatrix = []
     for (rawSubjectListNumber=0; rawSubjectListNumber<rawSubjectsMatrix.length; rawSubjectListNumber++){
         subjectsMatrix.push([])
         typeSubjectMatrix.push([])
