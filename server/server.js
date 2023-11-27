@@ -1,7 +1,18 @@
 const express = require("express");
 const fs = require("fs");
 const axios = require("axios");
-    
+const { Sequelize } = require('sequelize')
+const { Client } = require('pg');
+const Op = Sequelize.Op;
+const dbConfig = require('./db-config.json');
+const dbName = dbConfig.postgre.db;
+const userName = dbConfig.postgre.username;
+const password = dbConfig.postgre.password;
+const host = dbConfig.postgre.host
+const port = dbConfig.postgre.port
+const dialect = 'postgres'
+
+
 const app = express();
 const jsonParser = express.json();
 const idLetters = {
@@ -43,30 +54,6 @@ const lessonTypes = {
     "5": "Экзамен/Консультация/Зачет",
     "6": "Курсовой проект"
 }
-  
-async function getStaffSchedule (number) {
-    try{
-        const response = await axios.get(`https://ssau.ru/rasp?staffId=${number}/`)
-        console.log('success'); // HTML
-        return response.data
-    }
-    catch(e)
-    {
-        console.log(e);
-    }
-}
-
-async function getGroupSchedule (number) {
-    try{
-        const response = await axios.get(`https://ssau.ru/rasp?groupId=${number}/`)
-        console.log('success'); // HTML
-        return response.data
-    }
-    catch(e)
-    {
-        console.log(e);
-    }
-}
 
 async function getRequestToSSAU(request){
     try{
@@ -81,33 +68,64 @@ async function getRequestToSSAU(request){
     }
 }
 
-async function getStaffId(name){
-    const idLetter = idLetters[name[0].toUpperCase()]
-    const responseData = await getRequestToSSAU(`https://ssau.ru/staff?letter=${idLetter}/`)
-    const rawPageRegex = /https:\/\/ssau\.ru\/staff\?page=(\d?\d)&amp;letter=/g
-    const rawPages = await responseData.match(rawPageRegex);
-    const pagesNumberRegex = /(\d\d?)/g
-    let pages = []
-    for (let index = 0; index < rawPages.length; index++)
-        pages.push(parseInt(await rawPages[index].match(pagesNumberRegex)))
-    const maxPageNumber = Math.max(...pages)
-    for (let pageNumber = 1; pageNumber <= maxPageNumber; pageNumber++){
-        pageData = await getRequestToSSAU(`https://ssau.ru/staff?letter=${idLetter}&page=${pageNumber}`)
-        const regexStaff = /href="https:\/\/ssau\.ru\/staff\/(\d+)-(.)*">\n.*\n/g
-        const rawStaff = await pageData.match(regexStaff)
-        for (let rawLecturerNumber = 0; rawLecturerNumber < rawStaff.length; rawLecturerNumber++){
-            regexName = new RegExp(name)
-            console.log(rawStaff[rawLecturerNumber])
-            isTargetLecturer = await regexName.test(rawStaff[rawLecturerNumber])
-            if (isTargetLecturer === true){
+// async function getStaffId(name){
+//     const idLetter = idLetters[name[0].toUpperCase()]
+//     const responseData = await getRequestToSSAU(`https://ssau.ru/staff?letter=${idLetter}/`)
+//     const rawPageRegex = /https:\/\/ssau\.ru\/staff\?page=(\d?\d)&amp;letter=/g
+//     const rawPages = await responseData.match(rawPageRegex);
+//     const pagesNumberRegex = /(\d\d?)/g
+//     let pages = []
+//     for (let index = 0; index < rawPages.length; index++)
+//         pages.push(parseInt(await rawPages[index].match(pagesNumberRegex)))
+//     const maxPageNumber = Math.max(...pages)
+//     for (let pageNumber = 1; pageNumber <= maxPageNumber; pageNumber++){
+//         pageData = await getRequestToSSAU(`https://ssau.ru/staff?letter=${idLetter}&page=${pageNumber}`)
+//         const regexStaff = /href="https:\/\/ssau\.ru\/staff\/(\d+)-(.)*">\n.*\n/g
+//         const rawStaff = await pageData.match(regexStaff)
+//         for (let rawLecturerNumber = 0; rawLecturerNumber < rawStaff.length; rawLecturerNumber++){
+//             regexName = new RegExp(name)
+//             console.log(rawStaff[rawLecturerNumber])
+//             isTargetLecturer = await regexName.test(rawStaff[rawLecturerNumber])
+//             if (isTargetLecturer === true){
+//                 const idStaffRegex = /(\d)+/g
+//                 staffId = await rawStaff[rawLecturerNumber].match(idStaffRegex)
+//                 return parseInt(staffId)
+//             }
+//         }
+//     }
+//     return -1
+// }
+
+async function getStaff(){
+    staffList = []
+    for (const [key, value] of Object.entries(idLetters)) {
+        const idLetter = value
+        //const idLetter = idLetters[name[0].toUpperCase()]
+        const responseData = await getRequestToSSAU(`https://ssau.ru/staff?letter=${idLetter}/`)
+        const rawPageRegex = /https:\/\/ssau\.ru\/staff\?page=(\d?\d)&amp;letter=/g
+        const rawPages = await responseData.match(rawPageRegex);
+        const pagesNumberRegex = /(\d\d?)/g
+        let pages = []
+        for (let index = 0; index < rawPages.length; index++)
+            pages.push(parseInt(await rawPages[index].match(pagesNumberRegex)))
+        const maxPageNumber = Math.max(...pages)
+        for (let pageNumber = 1; pageNumber <= maxPageNumber; pageNumber++){
+            pageData = await getRequestToSSAU(`https://ssau.ru/staff?letter=${idLetter}&page=${pageNumber}`)
+            const regexStaff = /href="https:\/\/ssau\.ru\/staff\/(\d+)-(.)*">\n.*\n/g
+            const rawStaff = await pageData.match(regexStaff)
+            for (let rawLecturerNumber = 0; rawLecturerNumber < rawStaff.length; rawLecturerNumber++){
                 const idStaffRegex = /(\d)+/g
+                const nameStaffRegex = /([А-ЯЁ]|[а-яё]|(\.)|( )|(-)){4,}/g
                 staffId = await rawStaff[rawLecturerNumber].match(idStaffRegex)
-                return parseInt(staffId)
+                staffName = await rawStaff[rawLecturerNumber].match(nameStaffRegex)
+                staffPerson = {id: parseInt(staffId), name: staffName[0]}
+                staffList.push(staffPerson)
             }
         }
     }
-    return -1
+    return staffList
 }
+
 
 async function getLecturerSchedule(staffId, selectedWeek, selectedWeekday){
     const responseData = await getRequestToSSAU(
@@ -184,7 +202,10 @@ async function getLecturerSchedule(staffId, selectedWeek, selectedWeekday){
                     console.log(rawGroupNumber[0])
                     groupNumber = await rawGroupNumber[0].match(groupNumberRegex)
                     groupId = await rawGroupId[0].match(groupIdRegex)
-                    groupsMatrix[rawSubjectListNumber][rawSubjectIndex].push([{"groupNumber":groupNumber[0]},{"groupId": groupId}])
+                    var group = new Object()
+                        group.groupNumber = groupNumber[0]
+                        group.groupId = groupId[0]
+                    groupsMatrix[rawSubjectListNumber][rawSubjectIndex].push(group)
                 }
             }
             else{
@@ -211,11 +232,14 @@ async function getLecturerSchedule(staffId, selectedWeek, selectedWeekday){
             }
             else{
                 var element = new Object()
-                    element.subject = JSON.stringify(subjectsMatrix[subjectListIndex][subjectIndex])
-                    element.time = JSON.stringify(timeMatrix[subjectListIndex])
-                    element.place = JSON.stringify(placeMatrix[subjectListIndex][subjectIndex])
-                    element.groups = JSON.stringify(groupsMatrix[subjectListIndex][subjectIndex])
-                    element.type = JSON.stringify(typeSubjectMatrix[subjectListIndex][subjectIndex])
+                    element.subject = subjectsMatrix[subjectListIndex][subjectIndex]
+                    var time = new Object()
+                        time.startTime = timeMatrix[subjectListIndex][0]
+                        time.finishTime = timeMatrix[subjectListIndex][1]
+                    element.time = time
+                    element.place = placeMatrix[subjectListIndex][subjectIndex]
+                    element.groups = groupsMatrix[subjectListIndex][subjectIndex]
+                    element.type = typeSubjectMatrix[subjectListIndex][subjectIndex]
                 lectorSchedule[subjectListIndex].push(element)
             }
         })
@@ -224,7 +248,61 @@ async function getLecturerSchedule(staffId, selectedWeek, selectedWeekday){
     return JSON.parse(JSON.stringify(t))
 }
 
-async function getGroupId(number){
+// async function getGroupId(number){
+//     const responseData = await getRequestToSSAU(`https://ssau.ru/rasp`)
+//     const rawFacultiesRegex = /class="faculties"><h2((.|\n)*)class="footer"/g
+//     const rawFaculties = await responseData.match(rawFacultiesRegex);
+//     const rawFacultyNameRegex = /"h3-text"> (.)+ </g
+//     const rawFacultyIdRegex = /faculty\/(\d)+\?course/g
+//     const facultyIdRegex = /(\d)+/g
+//     const rawFacultiyNamesList = rawFaculties[0].match(rawFacultyNameRegex)
+//     const rawFacultiyIdList = rawFaculties[0].match(rawFacultyIdRegex)
+//     const faculties = []
+//     let groupId = -1
+//     const courseGroup = []
+//     for (let index = 0; index < rawFacultiyNamesList.length; index++){
+//         facultyName = rawFacultiyNamesList[index].substring(11). slice(0, -2)
+//         facultyId = rawFacultiyIdList[index].match(facultyIdRegex)
+//         faculties.push({facultyId: facultyId, facultyName: facultyName})
+//     }
+//     for (let facultyListIndex = 0; facultyListIndex < faculties.length; facultyListIndex++){
+//         const rawCourseRegex = /href="\/rasp\/faculty\/(.)*<\/nav><div/g
+//         const facultyCourseData = await getRequestToSSAU(`https://ssau.ru/rasp/faculty/${faculties[facultyListIndex]["facultyId"]}?course=1`)
+//         const rawCourse = facultyCourseData.match(rawCourseRegex)
+//         if(rawCourse === null) continue
+//         const rawCourseNumberRegex = /course=\d/g
+//         const rawCourseNumbers = rawCourse[0].match(rawCourseNumberRegex)
+//         const courseNumberRegex = /\d/g
+//         const maxCourseNumber = parseInt(rawCourseNumbers[0].match(courseNumberRegex))
+//         for (let course = 1; course <= maxCourseNumber; course++){
+//             const facultyGroupsData = await getRequestToSSAU(`https://ssau.ru/rasp/faculty/${faculties[facultyListIndex]["facultyId"]}?course=${course}`)
+//             const rawGroupsRegex = /href="\/rasp\?groupId=(\d)+"(.|\n)*class="footer"/g
+//             const rawGroups = facultyGroupsData.match(rawGroupsRegex)
+//             groupNumberRegex = /<span>(.)*<\/span>/g
+//             groupIdRegex = /groupId=(\d)+"/g
+//             const rawGroupNumbers = rawGroups[0].match(groupNumberRegex)
+//             const rawGroupIds = rawGroups[0].match(groupIdRegex)
+//             const groupNumbers =  []
+//             rawGroupNumbers.forEach(element => {
+//                 groupNumbers.push(element.substring(6).slice(0, -7))
+//             });
+//             const groupIds = []
+//             rawGroupIds.forEach(element => {
+//                 groupIds.push(element.substring(8).slice(0, -1))
+//             })
+//             groupNumbers.forEach((element, index, groupNumbers) => { courseGroup.push({groupNumber: element, groupId: groupIds[index]})});
+//             regexNumber = new RegExp(number)
+//             courseGroup.forEach((element) => {
+//                 if (regexNumber.test(element["groupNumber"])){
+//                     groupId = element["groupId"]
+//                 }
+//             })
+//         }   
+//     }
+//     return groupId
+// }
+
+async function getGroup(){
     const responseData = await getRequestToSSAU(`https://ssau.ru/rasp`)
     const rawFacultiesRegex = /class="faculties"><h2((.|\n)*)class="footer"/g
     const rawFaculties = await responseData.match(rawFacultiesRegex);
@@ -266,16 +344,10 @@ async function getGroupId(number){
             rawGroupIds.forEach(element => {
                 groupIds.push(element.substring(8).slice(0, -1))
             })
-            groupNumbers.forEach((element, index, groupNumbers) => { courseGroup.push({groupNumber: element, groupId: groupIds[index]})});
-            regexNumber = new RegExp(number)
-            courseGroup.forEach((element) => {
-                if (regexNumber.test(element["groupNumber"])){
-                    groupId = element["groupId"]
-                }
-            })
+            groupNumbers.forEach((element, index, groupNumbers) => { courseGroup.push({id: groupIds[index], number: element})});
         }   
     }
-    return groupId
+    return courseGroup
 }
 
 const transpose = matrix => matrix[0].map((col, i) => matrix.map(row => row[i]));
@@ -351,8 +423,8 @@ async function getGroupSchedule(groupId, selectedWeek, selectedWeekday){
                 typeSubjectMatrix[rawSubjectListNumber].push(null)
             }
 
-            const rawGroupRegex = /href=\"\/rasp\?groupId=(.)*>/g
-            const rawGroupNumberRegex = /schedule__group\">(.)* /g
+            const rawGroupRegex = /href="\/rasp\?groupId=(.)*>/g
+            const rawGroupNumberRegex = /schedule__group">(.)* /g
             const rawGroupIdRegex = /\/rasp\?groupId=(\d)*/g
             const groupIdRegex = /(\d)+/g
             const groupNumberRegex = /(\d{4})-(\d{6})(\D?)/g
@@ -364,7 +436,7 @@ async function getGroupSchedule(groupId, selectedWeek, selectedWeekday){
                     rawGroupId = await rawGroup[rawGroupIndex].match(rawGroupIdRegex)
                     groupNumber = await rawGroupNumber[0].match(groupNumberRegex)
                     groupId = await rawGroupId[0].match(groupIdRegex)
-                    groupsMatrix[rawSubjectListNumber][rawSubjectIndex].push([{"groupNumber":groupNumber[0]},{"groupId": groupId}])
+                    groupsMatrix[rawSubjectListNumber][rawSubjectIndex].push({"groupNumber":groupNumber[0], "groupId": groupId[0]})
                 }
             }
             else{
@@ -428,15 +500,42 @@ async function getGroupSchedule(groupId, selectedWeek, selectedWeekday){
                 groupSchedule[subjectListIndex].push(null)
             }
             else{
-                var element = new Object()
-                    element.subject = JSON.stringify(subjectsMatrix[subjectListIndex][subjectIndex])
-                    element.time = JSON.stringify(timeMatrix[subjectListIndex])
-                    element.place = JSON.stringify(placeMatrix[subjectListIndex][subjectIndex])
-                    element.lector = JSON.stringify(lectorMatrix[subjectListIndex][0])
+                if(subjectsMatrix[subjectListIndex][subjectIndex].length==1){
+                    var element = new Object()
+                        element.subject = subjectsMatrix[subjectListIndex][subjectIndex][0]
+                        element.time = timeMatrix[subjectListIndex]
+                        element.place = placeMatrix[subjectListIndex][subjectIndex][0]
+                        element.lector = lectorMatrix[subjectListIndex][0][0]
+                        lectorMatrix[subjectListIndex].shift()
+                        if(groupsMatrix[subjectListIndex][subjectIndex] !== null){
+                            element.groups = groupsMatrix[subjectListIndex][subjectIndex]
+                        }
+                        else{
+                            element.groups = groupsMatrix[subjectListIndex][subjectIndex]
+                        }
+                        element.type = typeSubjectMatrix[subjectListIndex][subjectIndex][0]
+                    groupSchedule[subjectListIndex].push([element])
+                }
+                else{
+                    lessonList = []
+                    for (lessonId = 0; lessonId < subjectsMatrix[subjectListIndex][subjectIndex].length; lessonId++){
+                        var element = new Object()
+                            element.subject = subjectsMatrix[subjectListIndex][subjectIndex][lessonId]
+                            element.time = timeMatrix[subjectListIndex]
+                            element.place = placeMatrix[subjectListIndex][subjectIndex][lessonId]
+                            element.lector = lectorMatrix[subjectListIndex][0][lessonId]
+                            if(groupsMatrix[subjectListIndex][subjectIndex] !== null){
+                                element.groups = groupsMatrix[subjectListIndex][subjectIndex][0]
+                            }
+                            else{
+                                element.groups = groupsMatrix[subjectListIndex][subjectIndex]
+                            }
+                            element.type = typeSubjectMatrix[subjectListIndex][subjectIndex][lessonId]
+                            lessonList.push(element)
+                    }
+                    groupSchedule[subjectListIndex].push(lessonList)
                     lectorMatrix[subjectListIndex].shift()
-                    element.groups = JSON.stringify(groupsMatrix[subjectListIndex][subjectIndex])
-                    element.type = JSON.stringify(typeSubjectMatrix[subjectListIndex][subjectIndex])
-                groupSchedule[subjectListIndex].push(element)
+                }
             }
         })
     })
@@ -444,15 +543,73 @@ async function getGroupSchedule(groupId, selectedWeek, selectedWeekday){
     return JSON.parse(JSON.stringify(t))
 }
 
+async function getSequelize(){
+    const sequelize = new Sequelize(dbName, userName, password, {
+        host: host,
+        port: port,
+        dialect: dialect,
+        pool: {
+            max: 15,
+            min: 5,
+            idle: 20000,
+            evict: 15000,
+            acquire: 30000
+        },
+        ssl: true,
+        define: {
+            timestamps: false
+        }
+    })
+    const Staff = sequelize.define("staff", {
+        id: {
+            type: Sequelize.INTEGER,
+            autoIncrement: false,
+            primaryKey: true,
+            allowNull: false
+        },
+        name: {
+            type: Sequelize.STRING,
+            allowNull: false
+        },
+    });
+    const Group = sequelize.define("group", {
+        id: {
+            type: Sequelize.INTEGER,
+            autoIncrement: false,
+            primaryKey: true,
+            allowNull: false
+        },
+        number: {
+            type: Sequelize.STRING,
+            allowNull: false
+        },
+    });
+    return { sequelize, Staff, Group }
+}
+
+app.get("/search/:request", async function(req, res){
+    const { sequelize, Staff, Group } = await getSequelize()
+    const request = req.params.request;
+    const like = request+'%'
+    const groups = await Group.findAll({where:{number:{[Op.like]: like}}, raw: true })
+    const staffs = await Staff.findAll({where:{name:{[Op.like]: like}}, raw: true })
+    res.send([groups, staffs]);
+})
+
 app.get("/group/:number", async function(req, res){
+    const { sequelize, Staff, Group } = await getSequelize()
     const number = req.params.number;
-    const groupId = await getGroupId(number)
-    if (groupId===-1) res.send("No Group")
-    else{
-        console.log(groupId)
-        const groupSchedule = await getGroupSchedule(groupId, 12, 1)
-        res.send(groupSchedule);
-    }
+    const like = number+'%'
+    Group.findAll({where:{number:{[Op.like]: like}}, raw: true })
+    .then(groups=>{
+      res.send(groups);
+    }).catch(err=>console.log(err));
+    // if (groupId===-1) res.send("No Group")
+    // else{
+    //     console.log(groupId)
+    //     const groupSchedule = await getGroupSchedule(groupId, 12, 1)
+    //     res.send(groupSchedule);
+    // }
 });
 
 app.get("/staff/:name", async function(req, res){
@@ -467,6 +624,36 @@ app.get("/staff/:name", async function(req, res){
     }
 });
 
-app.listen(3000, function(){
+async function createDb(){
+    var client = new Client({ user: userName, host: host, database: 'postgres', password: password, port: port, });
+    try { 
+        await client.connect(); 
+        console.log('Connected to PostgreSQL database!')
+        await client.query('CREATE DATABASE ' + dbName)
+        .catch(() => console.log('database already exist or you do not have sufficient access rights'))
+        await client.end()
+    }catch (err) 
+    { 
+        console.error('Error connecting to the database:', err); 
+    }    
+}
+
+app.listen(3000, async function(){
+    await createDb()
+    const { sequelize, Staff, Group } = await getSequelize()
+    try {
+        await sequelize.authenticate()
+        console.log('Соединение с БД было успешно установлено')
+    } catch (e) {
+        console.log('Невозможно выполнить подключение к БД: ', e)
+    }
+    await sequelize.sync().then(async ()=>{
+        // const staffList = await getStaff()
+        // await Staff.bulkCreate(staffList, { validate: true })
+        // const groupList = await getGroup()
+        // await Group.bulkCreate(groupList, { validate: true })
+    })
+    .catch(err=> console.log(err));
+    
     console.log("Сервер ожидает подключения...");
 });
