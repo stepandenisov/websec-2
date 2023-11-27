@@ -596,31 +596,92 @@ app.get("/search/:request", async function(req, res){
     res.send([groups, staffs]);
 })
 
-app.get("/group/:number", async function(req, res){
+app.get("/groups", async function(req, res){
     const { sequelize, Staff, Group } = await getSequelize()
-    const number = req.params.number;
-    const like = number+'%'
-    Group.findAll({where:{number:{[Op.like]: like}}, raw: true })
-    .then(groups=>{
-      res.send(groups);
-    }).catch(err=>console.log(err));
-    // if (groupId===-1) res.send("No Group")
-    // else{
-    //     console.log(groupId)
-    //     const groupSchedule = await getGroupSchedule(groupId, 12, 1)
-    //     res.send(groupSchedule);
-    // }
+    const groups = await Group.findAll({raw: true })
+                             .catch(err=>console.log(err));
+    res.send(groups);
 });
 
-app.get("/staff/:name", async function(req, res){
-    const name = req.params.name
-    const staffId = await getStaffId(name);
-    console.log(name)
-    if (staffId===-1) res.send("No Lecturer")
-    else{
-        console.log(staffId)
-        const lecturerSchedule = await getLecturerSchedule(staffId, 6, 1)
-        res.send(lecturerSchedule);
+app.get("/groups/:parameters", async function(req, res){
+    const { sequelize, Staff, Group } = await getSequelize()
+    const params = req.params.parameters.split('&');
+    const groupId = params[0]
+    var today = new Date();
+    var dd = String(today.getDate()).padStart(2, '0');
+    var mm = String(today.getMonth() + 1).padStart(2, '0');
+    var yyyy = today.getFullYear();
+    currentDate = new Date();
+    startDate = new Date(currentDate.getFullYear(), 8, 1);
+    var days = Math.floor((currentDate - startDate) /
+        (24 * 60 * 60 * 1000));
+    var selectedWeek = Math.ceil(days / 7) + 1;
+    var selectedWeekday = currentDate.getDay()+1 
+    if (params.length > 1){
+        const selectedWeekRegex = /selectedWeek=\d\d?/g
+        const selectedWeekdayRegex = /selectedWeekday=\d/g
+        const rawSelectedWeek = req.params.parameters.match(selectedWeekRegex)
+        if (rawSelectedWeek !== null){
+            selectedWeek = rawSelectedWeek[0].match(/\d{1,2}/g)
+        }
+        const rawSelectedWeekday = req.params.parameters.match(selectedWeekdayRegex)
+        if (rawSelectedWeekday !== null){
+            selectedWeekday = rawSelectedWeekday[0].match(/\d/g)
+        }    
+    }
+    const group = await Group.findOne({where:{id: groupId}, raw: true })
+                             .catch(err=>console.log(err));
+    if (group === null) {
+        res.send("No Group")
+    }
+    else {
+    const data = await getGroupSchedule(groupId, selectedWeek, selectedWeekday)
+    res.send(data);
+    }
+});
+
+app.get("/staff", async function(req, res){
+    const { sequelize, Staff, Group } = await getSequelize()
+    const staff = await Staff.findAll({raw: true })
+                             .catch(err=>console.log(err));
+    res.send(staff);
+});
+
+app.get("/staff/:parameters", async function(req, res){
+    const { sequelize, Staff, Group } = await getSequelize()
+    const params = req.params.parameters.split('&');
+    const staffId = params[0]
+    var today = new Date();
+    var dd = String(today.getDate()).padStart(2, '0');
+    var mm = String(today.getMonth() + 1).padStart(2, '0');
+    var yyyy = today.getFullYear();
+    currentDate = new Date();
+    startDate = new Date(currentDate.getFullYear(), 8, 1);
+    var days = Math.floor((currentDate - startDate) /
+        (24 * 60 * 60 * 1000));
+    
+    var selectedWeek = Math.ceil(days / 7) + 1;
+    var selectedWeekday = currentDate.getDay()+1 
+    if (params.length > 1){
+        const selectedWeekRegex = /selectedWeek=\d\d?/g
+        const selectedWeekdayRegex = /selectedWeekday=\d/g
+        const rawSelectedWeek = req.params.parameters.match(selectedWeekRegex)
+        if (rawSelectedWeek !== null){
+            selectedWeek = rawSelectedWeek[0].match(/\d{1,2}/g)
+        }
+        const rawSelectedWeekday = req.params.parameters.match(selectedWeekdayRegex)
+        if (rawSelectedWeekday !== null){
+            selectedWeekday = rawSelectedWeekday[0].match(/\d/g)
+        }    
+    }
+    const lecturer = await Staff.findOne({where:{id: staffId}, raw: true })
+                             .catch(err=>console.log(err));
+    if (lecturer === null) {
+        res.send("No Lecturer")
+    }
+    else {
+    const data = await getLecturerSchedule(staffId, selectedWeek, selectedWeekday)
+    res.send(data);
     }
 });
 
@@ -633,7 +694,7 @@ async function createDb(){
         .catch(() => console.log('database already exist or you do not have sufficient access rights'))
         await client.end()
     }catch (err) 
-    { 
+    {
         console.error('Error connecting to the database:', err); 
     }    
 }
@@ -648,10 +709,10 @@ app.listen(3000, async function(){
         console.log('Невозможно выполнить подключение к БД: ', e)
     }
     await sequelize.sync().then(async ()=>{
-        // const staffList = await getStaff()
-        // await Staff.bulkCreate(staffList, { validate: true })
-        // const groupList = await getGroup()
-        // await Group.bulkCreate(groupList, { validate: true })
+        const staffList = await getStaff()
+        await Staff.bulkCreate(staffList, { validate: true })
+        const groupList = await getGroup()
+        await Group.bulkCreate(groupList, { validate: true })
     })
     .catch(err=> console.log(err));
     
