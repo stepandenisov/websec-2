@@ -1,26 +1,54 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
 # dependencies
-/schedule/node_modules
-/schedule/.pnp
-/schedule/.pnp.js
+/client/node_modules
+/client/.pnp
+/client/.pnp.js
 /server/node_modules
 /server/.pnp
 /server/.pnp.js
+/database/node_modules
+/database/.pnp
+/database/.pnp.js
 
 # testing
-/schedule/coverage
+/client/coverage
+/server/coverage
+/database/coverage
 
 # production
-/schedule/build
+/client/build
+/server/build
+/database/coverage
 
 # misc
-/schedule/.DS_Store
-/schedule/.env.local
-/schedule/.env.development.local
-/schedule/.env.test.local
-/schedule/.env.production.local
+/client/.DS_Store
+/client/.env.local
+/client/.env.development.local
+/client/.env.test.local
+/client/.env.production.local
 
-/schedule/npm-debug.log*
-/schedule/yarn-debug.log*
-/schedule/yarn-error.log*
+/client/npm-debug.log*
+/client/yarn-debug.log*
+/client/yarn-error.log*
+
+/server/.DS_Store
+/server/.env.local
+/server/.env.development.local
+/server/.env.test.local
+/server/.env.production.local
+
+/server/npm-debug.log*
+/server/yarn-debug.log*
+/server/yarn-error.log*
+
+/database/.DS_Store
+/database/.env.local
+/database/.env.development.local
+/database/.env.test.local
+/database/.env.production.local
+
+/database/npm-debug.log*
+/database/yarn-debug.log*
+/database/yarn-error.log*
+

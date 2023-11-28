@@ -1,16 +1,7 @@
+const {getContext, createDb, Op} = require("../database/db.js")
 const express = require("express");
 const fs = require("fs");
 const axios = require("axios");
-const { Sequelize } = require('sequelize')
-const { Client } = require('pg');
-const Op = Sequelize.Op;
-const dbConfig = require('./db-config.json');
-const dbName = dbConfig.postgre.db;
-const userName = dbConfig.postgre.username;
-const password = dbConfig.postgre.password;
-const host = dbConfig.postgre.host
-const port = dbConfig.postgre.port
-const dialect = 'postgres'
 
 
 const app = express();
@@ -98,9 +89,8 @@ async function getRequestToSSAU(request){
 
 async function getStaff(){
     staffList = []
-    for (const [key, value] of Object.entries(idLetters)) {
+    for ([key, value] of Object.entries(idLetters)) {
         const idLetter = value
-        //const idLetter = idLetters[name[0].toUpperCase()]
         const responseData = await getRequestToSSAU(`https://ssau.ru/staff?letter=${idLetter}/`)
         const rawPageRegex = /https:\/\/ssau\.ru\/staff\?page=(\d?\d)&amp;letter=/g
         const rawPages = await responseData.match(rawPageRegex);
@@ -119,7 +109,7 @@ async function getStaff(){
                 staffId = await rawStaff[rawLecturerNumber].match(idStaffRegex)
                 staffName = await rawStaff[rawLecturerNumber].match(nameStaffRegex)
                 staffPerson = {id: parseInt(staffId), name: staffName[0]}
-                staffList.push(staffPerson)
+                await staffList.push(staffPerson)
             }
         }
     }
@@ -543,165 +533,107 @@ async function getGroupSchedule(groupId, selectedWeek, selectedWeekday){
     return JSON.parse(JSON.stringify(t))
 }
 
-async function getSequelize(){
-    const sequelize = new Sequelize(dbName, userName, password, {
-        host: host,
-        port: port,
-        dialect: dialect,
-        pool: {
-            max: 15,
-            min: 5,
-            idle: 20000,
-            evict: 15000,
-            acquire: 30000
-        },
-        ssl: true,
-        define: {
-            timestamps: false
-        }
-    })
-    const Staff = sequelize.define("staff", {
-        id: {
-            type: Sequelize.INTEGER,
-            autoIncrement: false,
-            primaryKey: true,
-            allowNull: false
-        },
-        name: {
-            type: Sequelize.STRING,
-            allowNull: false
-        },
-    });
-    const Group = sequelize.define("group", {
-        id: {
-            type: Sequelize.INTEGER,
-            autoIncrement: false,
-            primaryKey: true,
-            allowNull: false
-        },
-        number: {
-            type: Sequelize.STRING,
-            allowNull: false
-        },
-    });
-    return { sequelize, Staff, Group }
-}
 
 app.get("/search/:request", async function(req, res){
-    const { sequelize, Staff, Group } = await getSequelize()
+    const { sequelize, Staff, Group } = await getContext()
     const request = req.params.request;
     const like = request+'%'
     const groups = await Group.findAll({where:{number:{[Op.like]: like}}, raw: true })
     const staffs = await Staff.findAll({where:{name:{[Op.like]: like}}, raw: true })
+    sequelize.close()
     res.send([groups, staffs]);
 })
 
 app.get("/groups", async function(req, res){
-    const { sequelize, Staff, Group } = await getSequelize()
+    const { sequelize, Staff, Group } = await getContext()
     const groups = await Group.findAll({raw: true })
                              .catch(err=>console.log(err));
+    sequelize.close()
     res.send(groups);
 });
 
-app.get("/groups/:parameters", async function(req, res){
-    const { sequelize, Staff, Group } = await getSequelize()
-    const params = req.params.parameters.split('&');
-    const groupId = params[0]
-    var today = new Date();
-    var dd = String(today.getDate()).padStart(2, '0');
-    var mm = String(today.getMonth() + 1).padStart(2, '0');
-    var yyyy = today.getFullYear();
-    currentDate = new Date();
-    startDate = new Date(currentDate.getFullYear(), 8, 1);
-    var days = Math.floor((currentDate - startDate) /
-        (24 * 60 * 60 * 1000));
-    var selectedWeek = Math.ceil(days / 7) + 1;
-    var selectedWeekday = currentDate.getDay()+1 
-    if (params.length > 1){
-        const selectedWeekRegex = /selectedWeek=\d\d?/g
-        const selectedWeekdayRegex = /selectedWeekday=\d/g
-        const rawSelectedWeek = req.params.parameters.match(selectedWeekRegex)
-        if (rawSelectedWeek !== null){
-            selectedWeek = rawSelectedWeek[0].match(/\d{1,2}/g)
+app.get("/groups/:groupId", async function(req, res){
+    const { sequelize, Staff, Group } = await getContext()
+    const groupId = req.params.groupId
+    if(isNaN(parseInt(groupId))){
+        sequelize.close()
+        res.status(404).send('groupId is invalid');
+    }
+    else{
+        currentDate = new Date();
+        startDate = new Date(currentDate.getFullYear(), 8, 1);
+        var days = Math.floor((currentDate - startDate) /
+            (24 * 60 * 60 * 1000));
+        var selectedWeek = Math.ceil(days / 7) + 1;
+        var selectedWeekday = currentDate.getDay()+1 
+        for (const key in req.query) {
+            if (key === "selectedWeek"){
+                selectedWeek = req.query[key]
+            }
+            if(key === "selectedWeekday"){
+                selectedWeekday = req.query[key]
+            }
         }
-        const rawSelectedWeekday = req.params.parameters.match(selectedWeekdayRegex)
-        if (rawSelectedWeekday !== null){
-            selectedWeekday = rawSelectedWeekday[0].match(/\d/g)
-        }    
-    }
-    const group = await Group.findOne({where:{id: groupId}, raw: true })
-                             .catch(err=>console.log(err));
-    if (group === null) {
-        res.send("No Group")
-    }
-    else {
-    const data = await getGroupSchedule(groupId, selectedWeek, selectedWeekday)
-    res.send(data);
+        const group = await Group.findOne({where:{id: groupId}, raw: true })
+                                .catch(err=>console.log(err));
+        sequelize.close()
+        if (group === null) {
+            res.send("No Group")
+        }
+        else {
+            const data = await getGroupSchedule(groupId, selectedWeek, selectedWeekday)
+            res.send(data);
+        }
     }
 });
 
 app.get("/staff", async function(req, res){
-    const { sequelize, Staff, Group } = await getSequelize()
+    const { sequelize, Staff, Group } = await getContext()
     const staff = await Staff.findAll({raw: true })
                              .catch(err=>console.log(err));
+    sequelize.close()
     res.send(staff);
 });
 
-app.get("/staff/:parameters", async function(req, res){
-    const { sequelize, Staff, Group } = await getSequelize()
-    const params = req.params.parameters.split('&');
-    const staffId = params[0]
-    var today = new Date();
-    var dd = String(today.getDate()).padStart(2, '0');
-    var mm = String(today.getMonth() + 1).padStart(2, '0');
-    var yyyy = today.getFullYear();
-    currentDate = new Date();
-    startDate = new Date(currentDate.getFullYear(), 8, 1);
-    var days = Math.floor((currentDate - startDate) /
-        (24 * 60 * 60 * 1000));
-    
-    var selectedWeek = Math.ceil(days / 7) + 1;
-    var selectedWeekday = currentDate.getDay()+1 
-    if (params.length > 1){
-        const selectedWeekRegex = /selectedWeek=\d\d?/g
-        const selectedWeekdayRegex = /selectedWeekday=\d/g
-        const rawSelectedWeek = req.params.parameters.match(selectedWeekRegex)
-        if (rawSelectedWeek !== null){
-            selectedWeek = rawSelectedWeek[0].match(/\d{1,2}/g)
+app.get("/staff/:staffId", async function(req, res){
+    const { sequelize, Staff, Group } = await getContext()
+    const staffId = req.params.staffId
+    if(isNaN(parseInt(staffId))){
+        sequelize.close()
+        res.status(404).send('groupId is invalid');
+    }
+    else{
+        currentDate = new Date();
+        startDate = new Date(currentDate.getFullYear(), 8, 1);
+        var days = Math.floor((currentDate - startDate) /
+            (24 * 60 * 60 * 1000));
+        var selectedWeek = Math.ceil(days / 7) + 1;
+        var selectedWeekday = currentDate.getDay()+1 
+        for (const key in req.query) {
+            if (key === "selectedWeek"){
+                selectedWeek = req.query[key]
+            }
+            if(key === "selectedWeekday"){
+                selectedWeekday = req.query[key]
+            }
         }
-        const rawSelectedWeekday = req.params.parameters.match(selectedWeekdayRegex)
-        if (rawSelectedWeekday !== null){
-            selectedWeekday = rawSelectedWeekday[0].match(/\d/g)
-        }    
-    }
-    const lecturer = await Staff.findOne({where:{id: staffId}, raw: true })
-                             .catch(err=>console.log(err));
-    if (lecturer === null) {
-        res.send("No Lecturer")
-    }
-    else {
-    const data = await getLecturerSchedule(staffId, selectedWeek, selectedWeekday)
-    res.send(data);
+        const lecturer = await Staff.findOne({where:{id: staffId}, raw: true })
+                                .catch(err=>console.log(err));
+        sequelize.close()
+        if (lecturer === null) {
+            res.send("No Lecturer")
+        }
+        else {
+        const data = await getLecturerSchedule(staffId, selectedWeek, selectedWeekday)
+        res.send(data);
+        }
     }
 });
 
-async function createDb(){
-    var client = new Client({ user: userName, host: host, database: 'postgres', password: password, port: port, });
-    try { 
-        await client.connect(); 
-        console.log('Connected to PostgreSQL database!')
-        await client.query('CREATE DATABASE ' + dbName)
-        .catch(() => console.log('database already exist or you do not have sufficient access rights'))
-        await client.end()
-    }catch (err) 
-    {
-        console.error('Error connecting to the database:', err); 
-    }    
-}
 
 app.listen(3000, async function(){
     await createDb()
-    const { sequelize, Staff, Group } = await getSequelize()
+    const { sequelize, Staff, Group } = await getContext()
     try {
         await sequelize.authenticate()
         console.log('Соединение с БД было успешно установлено')
@@ -709,12 +641,12 @@ app.listen(3000, async function(){
         console.log('Невозможно выполнить подключение к БД: ', e)
     }
     await sequelize.sync().then(async ()=>{
-        const staffList = await getStaff()
-        await Staff.bulkCreate(staffList, { validate: true })
-        const groupList = await getGroup()
-        await Group.bulkCreate(groupList, { validate: true })
+        // const staffList = await getStaff()
+        // await Staff.bulkCreate(staffList, { validate: true })
+        // const groupList = await getGroup()
+        // await Group.bulkCreate(groupList, { validate: true })
     })
     .catch(err=> console.log(err));
-    
+    sequelize.close()
     console.log("Сервер ожидает подключения...");
 });
