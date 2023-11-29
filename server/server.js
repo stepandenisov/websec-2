@@ -2,9 +2,11 @@ const {getContext, createDb, Op} = require("../database/db.js")
 const express = require("express");
 const fs = require("fs");
 const axios = require("axios");
+const cors = require('cors')
 
 
 const app = express();
+app.use(cors())
 const jsonParser = express.json();
 const idLetters = {
     "А": 1,
@@ -541,7 +543,7 @@ app.get("/search/:request", async function(req, res){
     const groups = await Group.findAll({where:{number:{[Op.like]: like}}, raw: true })
     const staffs = await Staff.findAll({where:{name:{[Op.like]: like}}, raw: true })
     sequelize.close()
-    res.send([groups, staffs]);
+    res.send({"groups":groups, "staff": staffs});
 })
 
 app.get("/groups", async function(req, res){
@@ -631,7 +633,7 @@ app.get("/staff/:staffId", async function(req, res){
 });
 
 
-app.listen(3000, async function(){
+app.listen(3001, async function(){
     await createDb()
     const { sequelize, Staff, Group } = await getContext()
     try {
