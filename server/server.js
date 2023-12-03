@@ -185,13 +185,11 @@ async function getLecturerSchedule(staffId, selectedWeek, selectedWeekday){
             const groupIdRegex = /(\d)+/g
             const groupNumberRegex = /(\d{4})-(\d{6})(\D)?( \(\d\))?/g
             rawGroup = await rawSubjectsMatrix[rawSubjectListNumber][rawSubjectIndex].match(rawGroupRegex)
-            console.log(rawGroup)
             if (rawGroup!== null){
                 groupsMatrix[rawSubjectListNumber].push([])
                 for (rawGroupIndex = 0; rawGroupIndex < rawGroup.length; rawGroupIndex++){
                     rawGroupNumber = await rawGroup[rawGroupIndex].match(rawGroupNumberRegex)
                     rawGroupId = await rawGroup[rawGroupIndex].match(rawGroupIdRegex)
-                    console.log(rawGroupNumber[0])
                     groupNumber = await rawGroupNumber[0].match(groupNumberRegex)
                     groupId = await rawGroupId[0].match(groupIdRegex)
                     var group = new Object()
@@ -236,8 +234,8 @@ async function getLecturerSchedule(staffId, selectedWeek, selectedWeekday){
             }
         })
     })
-    t = transpose(lectorSchedule)
-    return JSON.parse(JSON.stringify(t))
+    //t = transpose(lectorSchedule)
+    return JSON.parse(JSON.stringify(lectorSchedule))
 }
 
 // async function getGroupId(number){
@@ -484,11 +482,8 @@ async function getGroupSchedule(groupId, selectedWeek, selectedWeekday){
     }
     subjectsMatrix.forEach((subjectList, subjectListIndex) =>{
         groupSchedule.push([])
-        console.log(subjectList)
         subjectList.forEach((subject, subjectIndex) =>{
-            console.log(subject)
             if(subject===null){
-                console.log(subjectIndex)
                 groupSchedule[subjectListIndex].push(null)
             }
             else{
@@ -531,30 +526,33 @@ async function getGroupSchedule(groupId, selectedWeek, selectedWeekday){
             }
         })
     })
-    t = transpose(groupSchedule)
-    return JSON.parse(JSON.stringify(t))
+    //t = transpose(groupSchedule)
+    return JSON.parse(JSON.stringify(groupSchedule))
 }
 
 
 app.get("/search/:request", async function(req, res){
+    console.log(req)
     const { sequelize, Staff, Group } = await getContext()
     const request = req.params.request;
     const like = request+'%'
-    const groups = await Group.findAll({where:{number:{[Op.like]: like}}, raw: true })
-    const staffs = await Staff.findAll({where:{name:{[Op.like]: like}}, raw: true })
+    const groups = await Group.findAll({where:{number:{[Op.like]: like}}, order: [['number', 'ASC'],], raw: true})
+    const staffs = await Staff.findAll({where:{name:{[Op.like]: like}}, order: [['name', 'ASC'],], raw: true })
     sequelize.close()
     res.send({"groups":groups, "staff": staffs});
 })
 
 app.get("/groups", async function(req, res){
+    console.log(req)
     const { sequelize, Staff, Group } = await getContext()
-    const groups = await Group.findAll({raw: true })
+    const groups = await Group.findAll({raw: true , order: [['number', 'ASC'],]},)
                              .catch(err=>console.log(err));
     sequelize.close()
     res.send(groups);
 });
 
 app.get("/groups/:groupId", async function(req, res){
+    console.log(req)
     const { sequelize, Staff, Group } = await getContext()
     const groupId = req.params.groupId
     if(isNaN(parseInt(groupId))){
@@ -570,26 +568,31 @@ app.get("/groups/:groupId", async function(req, res){
         var selectedWeekday = currentDate.getDay()+1 
         for (const key in req.query) {
             if (key === "selectedWeek"){
-                selectedWeek = req.query[key]
+                if(!isNaN(req.query[key])){
+                    selectedWeek = req.query[key]
+                }
             }
             if(key === "selectedWeekday"){
-                selectedWeekday = req.query[key]
+                if(!isNaN(req.query[key])){
+                    selectedWeekday = req.query[key]
+                }
             }
         }
         const group = await Group.findOne({where:{id: groupId}, raw: true })
                                 .catch(err=>console.log(err));
         sequelize.close()
         if (group === null) {
-            res.send("No Group")
+            res.send({groupNumber: "No Group", groupSchedule:null})
         }
         else {
             const data = await getGroupSchedule(groupId, selectedWeek, selectedWeekday)
-            res.send(data);
+            res.send({groupNumber: group.number, groupSchedule: data});
         }
     }
 });
 
 app.get("/staff", async function(req, res){
+    console.log(req)
     const { sequelize, Staff, Group } = await getContext()
     const staff = await Staff.findAll({raw: true })
                              .catch(err=>console.log(err));
@@ -598,6 +601,7 @@ app.get("/staff", async function(req, res){
 });
 
 app.get("/staff/:staffId", async function(req, res){
+    console.log(req)
     const { sequelize, Staff, Group } = await getContext()
     const staffId = req.params.staffId
     if(isNaN(parseInt(staffId))){
@@ -613,21 +617,25 @@ app.get("/staff/:staffId", async function(req, res){
         var selectedWeekday = currentDate.getDay()+1 
         for (const key in req.query) {
             if (key === "selectedWeek"){
-                selectedWeek = req.query[key]
+                if(!isNaN(req.query[key])){
+                    selectedWeek = req.query[key]
+                }
             }
             if(key === "selectedWeekday"){
-                selectedWeekday = req.query[key]
+                if(!isNaN(req.query[key])){
+                    selectedWeekday = req.query[key]
+                }
             }
         }
         const lecturer = await Staff.findOne({where:{id: staffId}, raw: true })
                                 .catch(err=>console.log(err));
         sequelize.close()
         if (lecturer === null) {
-            res.send("No Lecturer")
+            res.send({lecturerName: "No Lecturer", lecturerSchedule: null})
         }
         else {
         const data = await getLecturerSchedule(staffId, selectedWeek, selectedWeekday)
-        res.send(data);
+        res.send({lecturerName: lecturer.name, lecturerSchedule: data});
         }
     }
 });

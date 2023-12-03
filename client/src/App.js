@@ -1,6 +1,10 @@
 import React from 'react';
 import { Staff } from './components/Staff/Staff';
-import './App.css'
+import { Groups } from './components/Group/Group';
+import { BarClass } from './components/Bar';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';import './App.css'
+import {GroupSchedule} from './components/GroupSchedule'
+import { StaffSchedule } from './components/StaffSchedule';
 
 
 class App extends React.Component {
@@ -17,8 +21,23 @@ class App extends React.Component {
 
   render(){
     return (
-      <div class="container">
-        <Staff />
+      <div>
+        <div>
+          <Router>
+            <div>
+              <Routes>
+                <Route exact path="/" element={<Staff />}  />
+                <Route exact path="/staff" element={<Staff />} />
+                <Route exact path="/groups" element={<Groups />} />
+                <Route exact path="/groups/:id" element={<GroupSchedule />}/>
+                <Route exact path="/staff/:id" element={<StaffSchedule />}/>
+              </Routes>
+            </div>
+          </Router>
+        </div>
+        {/* <div class="container">
+          <Groups />
+        </div> */}
       </div>
     );
   }

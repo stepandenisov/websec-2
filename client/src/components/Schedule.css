@@ -1,0 +1,25 @@
+.Лекция {
+    background-color: lightgreen;
+  }
+.Практика{
+    background-color: lightcoral;
+}
+.Лабораторная{
+    background-color: lightgoldenrodyellow;
+}
+.Другое{
+    background-color: lightgray;
+}
+@media (min-width: 767.97px){
+    .rightButton{
+        justify-content: justify-content-end;
+    }
+    .leftButton{
+        justify-content: justify-content-start;
+    }
+}
+@media (max-width: 767.96px){
+    .rightButton, .leftButton{
+        justify-content: justify-content-start;
+    }
+}

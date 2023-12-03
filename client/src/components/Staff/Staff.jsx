@@ -1,8 +1,11 @@
 import axios from 'axios'
 import { useEffect, useState } from 'react'
-import './Staff.css'
+import React from 'react';
+import '../Component.css'
+import { BarClass } from '../Bar';
 
-export function Staff(){
+
+function Staffs(){
 
     const [staff, setStaff] = useState([])
     useEffect(() => {
@@ -23,30 +26,45 @@ export function Staff(){
     }
 
     return (
-      <div class="container">
-      <div class="col">
-        <div class="row-sm">
-          <input 
-              class="form-control mr-sm-2" 
-              type="search" 
-              placeholder="..." 
-              aria-label="Search"
-              onChange = {(event) => 
-                {
-                  searchStaff(event.target.value)
-                }}
-              />
+      <>
+        <div class="container">
+          <BarClass />
         </div>
-        <div class="scrollStaff">
-          <div class="list-group" aria-current="true">
-            {
-              staff.map((person) => {
-                return <button type="button" class="list-group-item list-group-item-action">{person.name}</button>
-              })
-            }
+        <div class="container">
+        <div class="col">
+          <div class="row-sm">
+            <input 
+                class="form-control mr-sm-2" 
+                type="search" 
+                placeholder="..." 
+                aria-label="Search"
+                onChange = {(event) => 
+                  {
+                    searchStaff(event.target.value)
+                  }}
+                />
+          </div>
+          <div class="scrollStaff">
+            <div class="list-group" aria-current="true">
+              {
+                staff.map((person) => {
+                  return <a href={`\\staff\\${person.id}`} class="btn btn-link btn-lg active" role="button" aria-pressed="true">{person.name}</a>
+                })
+              }
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
+}
+
+export class Staff extends React.Component {
+  render(){
+    return (
+        <div class="container">
+          <Staffs />
+        </div>
+    );
+  }
 }
