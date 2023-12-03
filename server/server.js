@@ -651,10 +651,10 @@ app.listen(3001, async function(){
         console.log('Невозможно выполнить подключение к БД: ', e)
     }
     await sequelize.sync().then(async ()=>{
-        // const staffList = await getStaff()
-        // await Staff.bulkCreate(staffList, { validate: true })
-        // const groupList = await getGroup()
-        // await Group.bulkCreate(groupList, { validate: true })
+        const staffList = await getStaff()
+        await Staff.bulkCreate(staffList, { validate: true })
+        const groupList = await getGroup()
+        await Group.bulkCreate(groupList, { validate: true })
     })
     .catch(err=> console.log(err));
     sequelize.close()

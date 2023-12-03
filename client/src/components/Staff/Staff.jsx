@@ -1,8 +1,8 @@
 import axios from 'axios'
 import { useEffect, useState } from 'react'
 import React from 'react';
-import '../Component.css'
-import { BarClass } from '../Bar';
+import '../Style/Component.css'
+import { BarClass } from '../Service/Bar';
 
 
 function Staffs(){
@@ -26,15 +26,15 @@ function Staffs(){
     }
 
     return (
-      <>
-        <div class="container">
+      <div className="container flex overflow-visible">
+        <div className="container">
           <BarClass />
         </div>
-        <div class="container">
-        <div class="col">
-          <div class="row-sm">
+        <div className="container">
+        <div className="col">
+          <div className="row-sm">
             <input 
-                class="form-control mr-sm-2" 
+                className="form-control mr-sm-2" 
                 type="search" 
                 placeholder="..." 
                 aria-label="Search"
@@ -44,25 +44,25 @@ function Staffs(){
                   }}
                 />
           </div>
-          <div class="scrollStaff">
-            <div class="list-group" aria-current="true">
+          </div>
+          </div>
+          <div className="container overflow-auto">
+            <div className="list-group" aria-current="true">
               {
                 staff.map((person) => {
-                  return <a href={`\\staff\\${person.id}`} class="btn btn-link btn-lg active" role="button" aria-pressed="true">{person.name}</a>
+                  return <a key={person.id} href={`\\staff\\${person.id}`} className="btn btn-link btn-lg active" role="button" aria-pressed="true">{person.name}</a>
                 })
               }
             </div>
           </div>
-        </div>
-      </div>
-    </>
+    </div>
   );
 }
 
 export class Staff extends React.Component {
   render(){
     return (
-        <div class="container">
+        <div className="container">
           <Staffs />
         </div>
     );

@@ -1,10 +1,9 @@
 import React from 'react';
 import { Staff } from './components/Staff/Staff';
 import { Groups } from './components/Group/Group';
-import { BarClass } from './components/Bar';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';import './App.css'
-import {GroupSchedule} from './components/GroupSchedule'
-import { StaffSchedule } from './components/StaffSchedule';
+import {GroupSchedule} from './components/Group/GroupSchedule'
+import { StaffSchedule } from './components/Staff/StaffSchedule';
 
 
 class App extends React.Component {

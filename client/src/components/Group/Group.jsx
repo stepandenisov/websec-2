@@ -1,8 +1,8 @@
 import axios from 'axios'
 import { useEffect, useState } from 'react'
 import React from 'react';
-import '../Component.css'
-import { BarClass } from '../Bar';
+import '../Style/Component.css'
+import { BarClass } from '../Service/Bar';
 
 
 export function Group(){
@@ -13,9 +13,8 @@ export function Group(){
     }, [])
 
     function searchGroups(groupNumber){
-      const request = parseInt(groupNumber)
-      if(!isNaN(request)){
-        axios.get(`http://localhost:3001/search/${request}`).then((response)=>{
+      if(groupNumber.length!==0){
+        axios.get(`http://localhost:3001/search/${groupNumber}`).then((response)=>{
             setGroups(response.data["groups"])})
       }
       else{
@@ -25,14 +24,14 @@ export function Group(){
     }
     return (
       <>
-      <div class="container">
+      <div className="container">
         <BarClass />
       </div>
-      <div class="container">
-        <div class="col">
-          <div class="row-sm">
+      <div className="container">
+        <div className="col">
+          <div className="row-sm">
             <input 
-                class="form-control mr-sm-2" 
+                className="form-control mr-sm-2" 
                 type="search" 
                 placeholder="..." 
                 aria-label="Search"
@@ -42,12 +41,12 @@ export function Group(){
                   }}
                 />
           </div>
-          <div class="scrollStaff">
-            <div class="list-group" aria-current="true">
+          <div className="container overflow-auto">
+            <div className="list-group" aria-current="true">
               {
                 groups.map((group) => {
                   //return <button type="button" class="list-group-item list-group-item-action">{group.number}</button>
-                  return <a href={`\\groups\\${group.id}`} class="btn btn-link btn-lg active" role="button" aria-pressed="true">{group.number}</a>
+                  return <a key={group.id} href={`\\groups\\${group.id}`} className="btn btn-link btn-lg active" role="button" aria-pressed="true">{group.number}</a>
                 })
               }
             </div>
@@ -62,7 +61,7 @@ export function Group(){
 export class Groups extends React.Component {
   render(){
     return (
-        <div class="container">
+        <div className="container">
           <Group />
         </div>
     );

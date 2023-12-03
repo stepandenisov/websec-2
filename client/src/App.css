@@ -1,10 +1,22 @@
-.container-fluid {
-    display: flex;
-    flex-direction: column;
-  }
+.full-page {
+  display: flex
+}
+.list-group{
+  overflow-y: scroll;
+  max-height: 450px;
+}
 
-  .scrollSearch {
-    height: 40vw;
-    overflow-y: scroll;
+@media (max-width: 576px) {
+    .list-group{
+      overflow-y: scroll;
+      max-height: 330px;
+      }
+  }
+  
+  @media (min-width: 576px) {
+    .list-group{
+      overflow-y: scroll;
+      max-height: 450px;
+    }
   }
   
