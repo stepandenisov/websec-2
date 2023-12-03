@@ -94,25 +94,25 @@ function SchedulePage(){
 
     return (
         <>
+        <div className="container">
+            <BarClass />
+        </div>
+              <div className="container-fluid">
+                  <div className="row">
+                      <div className="col-sm d-flex justify-content-end"><h6 className="col-sm d-inline-flex p-2 Лекция">Лекция</h6></div>
+                      <div className="col-sm d-flex justify-content-end"><h6 className="col-sm d-inline-flex p-2 Практика">Практика</h6></div>
+                      <div className="col-sm d-flex justify-content-end"><h6 className="col-sm d-inline-flex p-2 Лабораторная">Лабораторная</h6></div>
+                      <div className="col-sm d-flex justify-content-end"><h6 className="col-sm d-inline-flex p-2 Другое">Другое</h6></div>
+                  </div>
+              </div>
             {!isLoading &&
             <>
-            <div className="container">
-                <BarClass />
-            </div>
             {Array.isArray(subjects)&&
                 <>
                 <div className="container">
-                    <div className="row blockquote text-center">
-                        <h2 className="col">{name}</h2>
-                    </div>
-                </div>
-                <div className="container-fluid">
-                    <div className="row">
-                        <div className="col-sm d-flex justify-content-end"><h6 className="col-sm d-inline-flex p-2 Лекция">Лекция</h6></div>
-                        <div className="col-sm d-flex justify-content-end"><h6 className="col-sm d-inline-flex p-2 Практика">Практика</h6></div>
-                        <div className="col-sm d-flex justify-content-end"><h6 className="col-sm d-inline-flex p-2 Лабораторная">Лабораторная</h6></div>
-                        <div className="col-sm d-flex justify-content-end"><h6 className="col-sm d-inline-flex p-2 Другое">Другое</h6></div>
-                    </div>
+                  <div className="row blockquote text-center">
+                      <h2 className="col">{name}</h2>
+                  </div>
                 </div>
                 <div className="container-fluid">
                 <div className="row">
@@ -191,9 +191,6 @@ function SchedulePage(){
     }
     {isLoading && 
     <>  
-    <div className="container">
-        <BarClass />
-    </div>
         <LoadSpinner /></>}</>
     );
 }
