@@ -30,18 +30,26 @@ const dateByWeekNumber = (year, week, daysFromMonday) => {
 
 function getTimes(subjectMatrix){
   const timeSet = new Set()
+  const timeList = []
+  console.log(subjectMatrix)
   for (var rowId = 0; rowId < subjectMatrix.length; rowId ++)
   {
     for (var subjectId = 0; subjectId < subjectMatrix[rowId].length; subjectId++)
     {
       if (subjectMatrix[rowId][subjectId] !==null){
-        timeSet.add([subjectMatrix[rowId][subjectId][0]["time"]["startTime"],
-                      subjectMatrix[rowId][subjectId][0]["time"]["finishTime"]])
-        break
+        if(subjectMatrix[rowId][subjectId][0]["time"]["startTime"] in timeSet || subjectMatrix[rowId][subjectId][0]["time"]["finishTime"] in timeSet){
+          break
+        }
+        else{
+          timeSet.add(subjectMatrix[rowId][subjectId][0]["time"]["startTime"],
+                      subjectMatrix[rowId][subjectId][0]["time"]["finishTime"])
+          timeList.push([subjectMatrix[rowId][subjectId][0]["time"]["startTime"],
+          subjectMatrix[rowId][subjectId][0]["time"]["finishTime"]])
+        }
       }
     }
   }
-  const timeList = Array.from(timeSet)
+  console.log(timeList)
   return timeList
 }
 

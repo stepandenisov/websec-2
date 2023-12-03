@@ -281,9 +281,15 @@ async function getGroupSchedule(groupId, selectedWeek, selectedWeekday){
         startTime = await rawTimeSchedule[rawScheduleListNumber-1].match(timeRegex)
         finishTime = await rawTimeSchedule[rawScheduleListNumber].match(timeRegex)
         timeMatrix.push({startTime: startTime[0], finishTime: finishTime[0]})
-        rawSubjectsMatrix.push(rawTimeSchedule[rawScheduleListNumber].match(subjectRegex))
-        rawAnotherSubjectMatrix.push(rawTimeSchedule[rawScheduleListNumber].match(anotherSubjectRegex))
-    }   
+        const rawTmp = rawTimeSchedule[rawScheduleListNumber].match(subjectRegex)
+        if(rawTmp !== null)
+        {
+            rawSubjectsMatrix.push(rawTimeSchedule[rawScheduleListNumber].match(subjectRegex))
+            rawAnotherSubjectMatrix.push(rawTimeSchedule[rawScheduleListNumber].match(anotherSubjectRegex))
+        }
+    } 
+    rawSubjectsMatrix.filter(element => element!==null)
+    console.log(rawSubjectsMatrix)
     subjectsMatrix = []
     typeSubjectMatrix = []
     groupsMatrix = []
