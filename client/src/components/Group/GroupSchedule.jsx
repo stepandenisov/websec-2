@@ -157,7 +157,7 @@ function SchedulePage(){
                                             return(
                                               <div className="row">
                                                 <div className={subLesson["type"]}>
-                                                  <p><u>{subLesson["subject"]}</u></p>
+                                                  <p><u><Markup content={subLesson["subject"]}/></u></p>
                                                   <p><small><Markup content={subLesson["place"]}/></small></p>
                                                   {subLesson["lector"]["lectorId"] !==-1 ?
                                                     <p><em><a href={`\\staff\\${subLesson["lector"]["lectorId"]}`} className="btn btn-link" role="button" aria-pressed="true"><small>{subLesson["lector"]["lectorName"]}</small></a></em></p>

@@ -258,6 +258,9 @@ async function getGroup(){
 async function getGroupSchedule(groupId, selectedWeek, selectedWeekday){
     const responseData = await getRequestToSSAU(
         `https://ssau.ru/rasp?groupId=${groupId}&selectedWeek=${selectedWeek}&selectedWeekday=${selectedWeekday}`)
+    if(responseData === null){
+        return []
+    }
     const rawScheduleRegex = /class="schedule__time-item">((.|\n)*)class="footer"/g
     const rawSchedule = await responseData.match(rawScheduleRegex)
     if (rawSchedule === null){
@@ -289,7 +292,6 @@ async function getGroupSchedule(groupId, selectedWeek, selectedWeekday){
         }
     } 
     rawSubjectsMatrix.filter(element => element!==null)
-    console.log(rawSubjectsMatrix)
     subjectsMatrix = []
     typeSubjectMatrix = []
     groupsMatrix = []
@@ -500,7 +502,13 @@ app.get("/groups/:groupId", async function(req, res){
                                 .catch(err=>console.log(err));
         sequelize.close()
         if (group === null) {
-            res.send({groupNumber: "No Group", groupSchedule:null})
+            const data = await getGroupSchedule(groupId, selectedWeek, selectedWeekday)
+            if(Array.isArray(data) && data.length !== 0){
+                res.send({groupNumber: '', groupSchedule: data});
+            }
+            else{
+                res.send({groupNumber: "No Group", groupSchedule:null})
+            }
         }
         else {
             const data = await getGroupSchedule(groupId, selectedWeek, selectedWeekday)
